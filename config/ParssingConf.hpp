@@ -8,6 +8,8 @@ class ParssingConf
 {
 private:
     std::vector<Config> _configs;
+
+    
     std::string readFile(const std::string &filename);
     std::string removeComments(const std::string &content);
     std::vector<std::string> tokenize(const std::string &content);

@@ -10,6 +10,7 @@ class Config
 private:
     int _port;
     std::string _serverName;
+    // std::string _host;
     std::string _root;
     std::string _index;
     size_t _clientMaxBodySize;
@@ -26,8 +27,9 @@ public:
     void addErrorPage(const std::string &code, const std::string &path);
     void addLocation(const LocationConfig &loc);
 
-    int getPort() const;
+    int getPort() const;  
     const std::string &getServerName() const;
+    // const std::string &getHost() const;
     const std::string &getRoot() const;
     const std::string &getIndex() const;
     size_t getClientMaxBodySize() const;

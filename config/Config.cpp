@@ -4,6 +4,7 @@
 
 int                                Config::getPort()              const { return _port; }
 const std::string                 &Config::getServerName()        const { return _serverName; }
+// const std::string                 &Config::getHost()              const { return _host; }
 const std::string                 &Config::getRoot()              const { return _root; }
 const std::string                 &Config::getIndex()             const { return _index; }
 size_t                             Config::getClientMaxBodySize() const { return _clientMaxBodySize; }

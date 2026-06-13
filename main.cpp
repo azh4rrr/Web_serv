@@ -9,7 +9,11 @@ int main(int argc, char *argv[]) {
     Webserv  Webserv;
     try
     {
+        std::cout << "Setting up servers..." << std::endl;
+        std::cout << "Config file: " << argv[1] << std::endl;
         Webserv.setupServers(argv[1]);
+        
+        Webserv.Start();
         // ParssingConf.parseConfig(argv[1]);
         
     }

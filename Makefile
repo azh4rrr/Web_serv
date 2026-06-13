@@ -1,12 +1,17 @@
 NAME = webserv
 
 CXX = c++
-CXXFLAGS = -Wall -Wextra -Werror -std=c++98
+CXXFLAGS = -Wall -Wextra -Werror -std=c++98 -g
 
-SRC = 	webserv.cpp \
+SRC = 	main.cpp \
+		webserv.cpp \
 		config/Config.cpp \
 		config/LocationConfig.cpp \
-		config/ParssingConf.cpp 
+		config/ParssingConf.cpp \
+		server/server.cpp \
+		server/client.cpp \
+		http/request.cpp \
+		http/response.cpp
 
 OBJ = $(SRC:.cpp=.o)
 

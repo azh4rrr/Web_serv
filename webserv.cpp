@@ -53,11 +53,10 @@ void Webserv::newConnection(int serverFd)
 void Webserv::readFromClient(int clientFd)
 {
     Client* client = getClientByFd(clientFd);
-    // Request& request = client->getRequest();
     if (!client)
         throw std::runtime_error("Client not found");
 
-    char buffer[10];
+    char buffer[4096];
     ssize_t bytesRead = recv(clientFd, buffer, sizeof(buffer), 0);
     if (bytesRead < 0)
     {
@@ -65,43 +64,58 @@ void Webserv::readFromClient(int clientFd)
     }
     else if (bytesRead == 0)
     {
+        // Client closed connection
+        // If headers were complete but body was incomplete, that's a 400 error
+        if (client->isheaderComplete() && !client->isRequestComplete())
+        {
+            std::cerr << "Client " << clientFd << " closed with incomplete body (Content-Length mismatch)" << std::endl;
+        }
         removeClient(clientFd);
         return;
     }
-    std::cout << "Received data from client fd " << clientFd << ": " << std::string(buffer, bytesRead) << std::endl;
+    
+    // std::cout << "Received data from client fd " << clientFd << ": " << std::string(buffer, bytesRead) << std::endl;
     client->appendrequest(std::string(buffer, bytesRead));
-    // client->_request.appendrequest(std::string(buffer, bytesRead));
+    
     if (client->isheaderComplete())
     {
+
+        // client->appendbody(std::string(buffer, bytesRead));
         if(client->isRequestComplete())
         {
-            std::cout << "Full request received from client fd " << clientFd << std::endl;
-            // Process the request and prepare the response
-            //display the request for testing
-            client->displayrequest();
+            
+            // std::cout << "Full request received from client fd " << clientFd << std::endl;
+            // client->displayrequest();
+            // client->setConfig(client->getConfig());
+            // client->setRequest(client->getrequest());
+            // client->_request->setRequest(client->getrequest());
+            // client->initrespond();
+            client->processResponse();
+            // std::cout << "Request Body: " << client->getBody() << std::endl;
             std::string response = "HTTP/1.1 200 OK\r\nContent-Length: 13\r\n\r\nHello, World!";
             client->setResponse(response);
+            // client->();
             readyToSend(clientFd);
         }
         else
         {
+            // Headers complete but body incomplete - wait for more data or client to close
             std::cout << "Headers complete but body not fully received for client fd " << clientFd << std::endl;
-            return; // Wait for more data to complete the request   
+            return;
         }
-
     }
-
 }
 
 void Webserv::Start()
 {
     while (true)
     {
-        int ret = poll(_pollfds.data(), _pollfds.size(), -1);
+        int ret = poll(_pollfds.data(), _pollfds.size(), -1);  // Infinite wait
         if (ret < 0)
         {
             throw std::runtime_error("Poll failed");
         }
+        
         for (size_t i = 0; i < _pollfds.size(); ++i)
         {
             if (_pollfds[i].revents & POLLIN)

@@ -6,7 +6,6 @@
 // #include <bool.h>
 
 
-
 class Client : public Request, public Response {
 private:
 
@@ -14,13 +13,15 @@ private:
     Config _config;
     Request _request;
     Response _response;
-    // std::string _readBuffer;
-    // bool _headerComplete;
     
 public:
     Client(int fd, const Config &config);
     int getFd() const;
     const Config &getConfig() const;
+    // void initrespend() {
+        
+    // }
+    Request& getrequest() {return _request;}
     // bool isRequestComplete() const ;
     // bool isheaderComplete() const ;
     // void appendToBuffer(const char* data, size_t len) {
@@ -32,6 +33,15 @@ public:
     }
     const Response& getResponse() const {
         return _response;
+    }
+    void processResponse();
+    void handelGet();
+    void handelPost() {
+        // Implement POST request handling logic here
+    }
+    void handelDelete() {
+        // Implement DELETE request handling logic here
+
     }
     // void displayrequest();
     // void parseRequest();

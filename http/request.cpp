@@ -97,7 +97,13 @@ void Request::parseHeaders(const std::string& headersPart)
             value.erase(0, 1);
         std::transform(key.begin(), key.end(), key.begin(), ::tolower);
         if (validkey(key))
+        {
+            if (key == "content-length")
+            {
+                _contentLength = std::strtoul(value.c_str(), NULL, 10);
+            }
             _headers[key] = value;
+        }
         else
             throw std::runtime_error("400");
         start = end + 2;
@@ -128,6 +134,7 @@ bool Request::isheaderComplete()
 {
     if(!_complete)
     {
+
         size_t pos = _rawRequest.find("\r\n\r\n");
         if (pos != std::string::npos)
         {
@@ -143,6 +150,7 @@ bool Request::isheaderComplete()
 void Request::parseRequest()
 {
     std::cout << "Parsing request..." << std::endl;
+    // _contentLength = 0;
     size_t headerEnd = _rawRequest.find("\r\n\r\n");
 
     if (headerEnd == std::string::npos)
@@ -150,7 +158,7 @@ void Request::parseRequest()
 
     std::string headerPart = _rawRequest.substr(0, headerEnd);
 
-    std::string bodyPart = _rawRequest.substr(headerEnd + 4);
+    // std::string bodyPart = _rawRequest.substr(headerEnd + 4);
 
     size_t firstLineEnd = headerPart.find("\r\n");
 
@@ -158,22 +166,64 @@ void Request::parseRequest()
         throw std::runtime_error("Bad Request");
     parseRequestLine(headerPart.substr(0, firstLineEnd));
     parseHeaders(headerPart.substr(firstLineEnd + 2));
-    parseBody(bodyPart);
+    // arase the header from the raw request to keep only the body for future appends
+    _rawRequest.erase(0, headerEnd + 4);
+    // parseBody(bodyPart);
 }
 
-bool Request::isRequestComplete() const
+bool Request::isRequestComplete()
 {
     // std::cout << "Checking if request is complete for method: " << _method << std::endl;
+
     if(_method == POST)
     {
-        
-        std::map<std::string, std::string>::const_iterator it = _headers.find("Content-Length");
-        if (it == _headers.end())
+        if (_rawRequest.size() >= getContentLength())
+        {
+            _body = _rawRequest.substr(0, getContentLength());
+            std::cout << "Request body complete based on Content-Length header." << std::endl;
+            return true;
+        }
+        else 
+        {
+            std::cout << "Request body incomplete. Received " << _rawRequest.size() << " bytes, expected " << getContentLength() << " bytes." << std::endl;
+            return false;
+        }
+
+        // return _body.size() >= getContentLength();
+        //append the body to the request and check if the content length is satisfied
+            // std::cout << "Checking Content-Length for POST request..." << std::endl;
+        // std::map<std::string, std::string>::const_iterator it = _headers.find("content-length");
+        // if (it == _headers.end())
             // bad request if POST but no Content-Length header
-            throw std::runtime_error("400");
-        size_t contentLength = std::strtoul(it->second.c_str(), NULL, 10);
-        std::cout << "Content-Length: " << contentLength << std::endl;
-        return _body.size() >= contentLength;
+            // throw std::runtime_error("400");
+        // size_t contentLength = std::strtoul(it->second.c_str(), NULL, 10);
+        // std::cout << "Content-Length: " << contentLength << std::endl;
+        // return _body.size() >= contentLength;
     }
     return true; 
+}
+
+// std::string Request::getHeader(const std::string& key) const
+// {
+//     std::map<std::string, std::string>::const_iterator it = _headers.find(key);
+//     if (it != _headers.end())
+//         return it->second;
+//     else
+//         return "";
+// }
+
+
+// std::string Request::getVersion() const
+// {
+//     return _version;
+// }
+
+// HttpMethod Request::getMethod() const
+// {
+//     return _method;
+// }
+
+const std::string& Request::getBody() const
+{
+    return _body;
 }

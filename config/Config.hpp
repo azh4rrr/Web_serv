@@ -40,4 +40,18 @@ public:
     void print() const; 
     std::string stripSemicolon(const std::string &s);
     std::string intToStr(int n);
+    const LocationConfig &getLocation(const std::string &uri) const{
+
+        for (size_t i = 0; i < _locations.size(); ++i)
+        {
+            if (uri == _locations[i].getPath())
+            {
+                return _locations[i];
+            }
+        }
+        throw std::runtime_error("No matching location found for URI: " + uri);
+    };
+    
+    
+
 };

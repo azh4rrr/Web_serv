@@ -42,6 +42,9 @@ public:
     const std::string& getUri() const{
         return _uri;
     };
+    void clear_rawRequest() {
+        _rawRequest.clear();
+    }
     const std::string& getVersion() const;
     const std::string& getBody() const;
     const std::map<std::string, std::string>& getHeaders() const;

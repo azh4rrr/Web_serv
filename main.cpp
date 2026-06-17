@@ -1,28 +1,36 @@
-#include "config/ParssingConf.hpp"
+// #include "config/ParssingConf.hpp"
 #include "Webserv.hpp"
 #include <iostream>
 
-int main(int argc, char *argv[]) {
+int main(int argc, char **argv) {
 
-    (void)argc;
-    // ParssingConf ParssingConf;
-    Webserv  Webserv;
-    try
+    if(argc == 1 || argc == 2)
     {
-        std::cout << "Setting up servers..." << std::endl;
-        std::cout << "Config file: " << argv[1] << std::endl;
-        Webserv.setupServers(argv[1]);
-        
-        Webserv.Start();
-        // ParssingConf.parseConfig(argv[1]);
-        
+        std::string configFile ;
+        if (argc == 1) {
+            configFile = "config/default.conf";
+        } else {
+            configFile = argv[1];
+        }
+        Webserv  Webserv;
+        try
+        {            
+            std::cout << "Setting up servers..." << std::endl;
+            // std::cout << "Config file: " << configFile << std::endl;
+            Webserv.setupServers(configFile);
+            // Webserv.PrintServers();
+            Webserv.Start();
+            // ParssingConf.parseConfig(configFile); 
+        }
+        catch (const std::exception &e)
+        {
+            std::cerr << e.what() << std::endl;
+            return 1;
+        }   
     }
-    catch (const std::exception &e)
+    else
     {
-        std::cerr << e.what() << std::endl;
+        std::cerr << "Usage: " << argv[0] << " [config_file]" << std::endl;
         return 1;
     }
-
-    return 0;
-
 }

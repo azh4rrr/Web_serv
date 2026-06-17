@@ -8,6 +8,7 @@ SRC = 	main.cpp \
 		config/Config.cpp \
 		config/LocationConfig.cpp \
 		config/ParssingConf.cpp \
+		config/serverConfig.cpp \
 		server/server.cpp \
 		server/client.cpp \
 		http/request.cpp \

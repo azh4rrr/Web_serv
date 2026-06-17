@@ -1,57 +1,29 @@
 #pragma once
 
+#include "serverConfig.hpp"
 #include "LocationConfig.hpp"
-#include <string>
-#include <vector>
-#include <map>
 
-class Config
+class Config : public serverConfig
 {
 private:
     int _port;
     std::string _serverName;
-    // std::string _host;
-    std::string _root;
-    std::string _index;
-    size_t _clientMaxBodySize;
-    std::map<int, std::string> _errorPages;
     std::vector<LocationConfig> _locations;
 
 public:
     Config();
-    void setPort(const std::string &port);
-    void setServerName(const std::string &name);
-    void setRoot(const std::string &root);
-    void setIndex(const std::string &index);
-    void setClientMaxBodySize(const std::string &size);
-    void addErrorPage(const std::string &code, const std::string &path);
-    void addLocation(const LocationConfig &loc);
+    virtual ~Config();
 
-    int getPort() const;  
-    const std::string &getServerName() const;
-    // const std::string &getHost() const;
-    const std::string &getRoot() const;
-    const std::string &getIndex() const;
-    size_t getClientMaxBodySize() const;
-    const std::map<int, std::string> &getErrorPages() const;
-    const std::vector<LocationConfig> &getLocations() const;
+    void setPort(const std::string& port);
+    void setServerName(const std::string& name);
+    void addLocation(const LocationConfig& location);
 
-    const LocationConfig *matchLocation(const std::string &uri) const;
-    void print() const; 
-    std::string stripSemicolon(const std::string &s);
-    std::string intToStr(int n);
-    const LocationConfig &getLocation(const std::string &uri) const{
+    int getPort() const;
+    const std::string& getServerName() const;
 
-        for (size_t i = 0; i < _locations.size(); ++i)
-        {
-            if (uri == _locations[i].getPath())
-            {
-                return _locations[i];
-            }
-        }
-        throw std::runtime_error("No matching location found for URI: " + uri);
-    };
-    
-    
+    const std::vector<LocationConfig>& getLocations() const;
 
+    const LocationConfig* findLocation(const std::string& uri) const;
+
+    void print() const;
 };

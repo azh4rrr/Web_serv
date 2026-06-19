@@ -14,7 +14,6 @@ protected:
     std::vector<std::string> _methods;
     std::string _cgiExtension;
     std::string _cgiPath;
-    std::string _return;
 
 public:
     serverConfig ();
@@ -28,7 +27,7 @@ public:
     void setMethods(const std::vector<std::string>& methods);
     void setCgiExtension(const std::string& ext);
     void setCgiPath(const std::string& path);
-    void setReturn(const std::string& value);
+    // void setReturn(const std::vector<std::string>& tokens, size_t* i);
 
     const std::string& getRoot() const;
     const std::string& getIndex() const;
@@ -38,7 +37,7 @@ public:
     const std::vector<std::string>& getMethods() const;
     const std::string& getCgiExtension() const;
     const std::string& getCgiPath() const;
-    const std::string& getReturn() const;
+    // const std::pair<int, std::string>& getReturn() const;
     std::string stripSemicolon(const std::string &s);
     std::string intToStr(int n);
 };

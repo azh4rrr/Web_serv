@@ -1,23 +1,30 @@
 #include "LocationConfig.hpp"
+#include <iostream>
 
 const std::string &LocationConfig::getPath() const { return _path; }
+
+const std::pair<int, std::string>& LocationConfig::getReturn() const { return _return; }
 
 LocationConfig::LocationConfig() : _path("") {}
 
 void LocationConfig::setPath(const std::string &path) { _path = path; }
 
+void LocationConfig::setReturn(const std::vector<std::string>& tokens, size_t* i) {
+//  std::cout << "token : " << tokens[*i] << std::endl;
+    _return.first = std::atoi(tokens[*i].c_str());
+    if (_return.first < 300 || _return.first > 399)
+        throw std::runtime_error("Location: return code must be 3xx, got "+ tokens[*i]);
+    ++(*i);
+    if (*i >= tokens.size())
+        throw std::runtime_error("Location: return missing URL after code "+ tokens[*i-1]);
+    _return.second = stripSemicolon(tokens[*i]);
+    if (_return.second.empty())
+        throw std::runtime_error("Location: return URL is empty after code "+ tokens[*i-1]);
+    ++(*i);
+}
+
 #include <iostream>
 LocationConfig::~LocationConfig() {
-    // _path.clear();
-    // _root.clear();
-    // _index.clear();
-    // _autoindex = false;
-    // _clientMaxBodySize.clear();
-    // _errorPages.clear();
-    // _methods.clear();
-    // _cgiExtension.clear();
-    // _cgiPath.clear();
-    // _return.clear();
 }
 
 void LocationConfig::print() const {
@@ -32,7 +39,7 @@ void LocationConfig::print() const {
     std::cout << std::endl;
     std::cout << "CGI Extension: " << _cgiExtension << std::endl;
     std::cout << "CGI Path: " << _cgiPath << std::endl;
-    std::cout << "Return: " << _return << std::endl;
+    // std::cout << "Return: " << _return << std::endl;
 }
 
 bool LocationConfig::isMethodAllowed(int method) const

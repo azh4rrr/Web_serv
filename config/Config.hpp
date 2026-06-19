@@ -23,7 +23,7 @@ public:
 
     const std::vector<LocationConfig>& getLocations() const;
 
-    const LocationConfig* findLocation(const std::string& uri) const;
+    // const LocationConfig* findLocation(const std::string& uri) const;
 
     void print() const;
 };

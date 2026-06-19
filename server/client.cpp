@@ -9,7 +9,6 @@
 #include <vector>
 
 void Client::processResponse() {
-
   if (Request::getMethod() == GET) {
     handelGET();
     return;
@@ -19,6 +18,165 @@ void Client::processResponse() {
     handelDELETE();
   }
 }
+
+
+#include <dirent.h>
+#include <sys/stat.h>
+#include <ctime>
+#include <sstream>
+
+// ─── Helper: format file size ────────────────────────────────────────────────
+
+static std::string formatSize(off_t size)
+{
+    std::ostringstream ss;
+    if (size < 1024)
+        ss << size << " B";
+    else if (size < 1024 * 1024)
+        ss << size / 1024 << " KB";
+    else
+        ss << size / (1024 * 1024) << " MB";
+    return ss.str();
+}
+
+// ─── Helper: format timestamp ────────────────────────────────────────────────
+
+static std::string formatTime(time_t t)
+{
+    char buf[32];
+    struct tm* tm = localtime(&t);
+    strftime(buf, sizeof(buf), "%Y-%m-%d %H:%M", tm);
+    return std::string(buf);
+}
+
+// ─── Core: build HTML directory listing ──────────────────────────────────────
+
+std::string Client::buildAutoIndex(const std::string& dirPath, const std::string& uri)
+{
+    // 1. Open the directory
+    DIR* dir = opendir(dirPath.c_str());
+    if (!dir)
+        return "";  // caller will send 403/500
+
+    // 2. Collect all entries
+    struct dirent* entry;
+    std::vector<std::string> dirs;   // directories first
+    std::vector<std::string> files;  // then files
+
+    while ((entry = readdir(dir)) != NULL)
+    {
+        std::string name = entry->d_name;
+
+        // skip current dir entry
+        if (name == ".")
+            continue;
+
+        std::string fullPath = dirPath;
+        if (fullPath[fullPath.size() - 1] != '/')
+            fullPath += '/';
+        fullPath += name;
+
+        struct stat st;
+        if (stat(fullPath.c_str(), &st) != 0)
+            continue;  // skip entries we can't stat
+
+        if (S_ISDIR(st.st_mode))
+            dirs.push_back(name);
+        else
+            files.push_back(name);
+    }
+    closedir(dir);
+
+    // 3. Sort both lists alphabetically
+    std::sort(dirs.begin(), dirs.end());
+    std::sort(files.begin(), files.end());
+
+    // 4. Build HTML
+    std::ostringstream html;
+
+    html << "<!DOCTYPE html>\n"
+         << "<html>\n"
+         << "<head>\n"
+         << "  <meta charset=\"UTF-8\">\n"
+         << "  <title>Index of " << uri << "</title>\n"
+         << "  <style>\n"
+         << "    body { font-family: monospace; padding: 20px; }\n"
+         << "    h1   { border-bottom: 1px solid #ccc; padding-bottom: 8px; }\n"
+         << "    table{ border-collapse: collapse; width: 100%; }\n"
+         << "    th   { text-align: left; padding: 6px 16px; border-bottom: 2px solid #ccc; }\n"
+         << "    td   { padding: 4px 16px; }\n"
+         << "    tr:hover { background: #f5f5f5; }\n"
+         << "    a    { text-decoration: none; color: #0366d6; }\n"
+         << "    a:hover { text-decoration: underline; }\n"
+         << "    .dir { color: #6f42c1; }\n"
+         << "  </style>\n"
+         << "</head>\n"
+         << "<body>\n"
+         << "  <h1>Index of " << uri << "</h1>\n"
+         << "  <table>\n"
+         << "    <tr>\n"
+         << "      <th>Name</th>\n"
+         << "      <th>Last Modified</th>\n"
+         << "      <th>Size</th>\n"
+         << "    </tr>\n";
+
+    // 5. Parent directory link (except if we're at root)
+    if (uri != "/")
+    {
+        html << "    <tr>\n"
+             << "      <td><a href=\"../\">../</a></td>\n"
+             << "      <td>-</td>\n"
+             << "      <td>-</td>\n"
+             << "    </tr>\n";
+    }
+
+    // 6. Directories first
+    for (size_t i = 0; i < dirs.size(); i++)
+    {
+        std::string fullPath = dirPath;
+        if (fullPath[fullPath.size() - 1] != '/')
+            fullPath += '/';
+        fullPath += dirs[i];
+
+        struct stat st;
+        stat(fullPath.c_str(), &st);
+
+        html << "    <tr>\n"
+             << "      <td class=\"dir\">"
+             << "<a href=\"" << dirs[i] << "/\">" << dirs[i] << "/</a>"
+             << "</td>\n"
+             << "      <td>" << formatTime(st.st_mtime) << "</td>\n"
+             << "      <td>-</td>\n"
+             << "    </tr>\n";
+    }
+
+    // 7. Files
+    for (size_t i = 0; i < files.size(); i++)
+    {
+        std::string fullPath = dirPath;
+        if (fullPath[fullPath.size() - 1] != '/')
+            fullPath += '/';
+        fullPath += files[i];
+
+        struct stat st;
+        stat(fullPath.c_str(), &st);
+
+        html << "    <tr>\n"
+             << "      <td>"
+             << "<a href=\"" << files[i] << "\">" << files[i] << "</a>"
+             << "</td>\n"
+             << "      <td>" << formatTime(st.st_mtime) << "</td>\n"
+             << "      <td>" << formatSize(st.st_size)  << "</td>\n"
+             << "    </tr>\n";
+    }
+
+    html << "  </table>\n"
+         << "</body>\n"
+         << "</html>\n";
+
+    return html.str();
+}
+
 
 bool isMatch(const std::string &uri, const std::string &location) {
 
@@ -31,20 +189,12 @@ bool isMatch(const std::string &uri, const std::string &location) {
   return uri[location.size()] == '/';
 }
 
-// bool Client::allowedMethod(const std::string &method) const
-// {
 
-// }
-
-void Client::setTargetPath() {
-
+void Client::findTargetLocation() {
   const std::vector<LocationConfig> &locations = _config.getLocations();
   std::string uri = getUri();
-  std::string targetPath;
 
   for (size_t i = 0; i < locations.size(); i++) {
-
-    std::cout << "Checking location" << std::endl;
     if (isMatch(uri, locations[i].getPath())) {
       if (_targetLocation.getPath().empty() ||
           locations[i].getPath().size() > _targetLocation.getPath().size()) {
@@ -52,28 +202,28 @@ void Client::setTargetPath() {
       }
     }
   }
-  if (_targetLocation.getPath().empty()) {
-  }
-  if (_targetLocation.isMethodAllowed(getMethod())) {
-    std::cout << "Method " << getMethod() << " is allowed for location "
-              << _targetLocation.getPath() << std::endl;
+}
+
+void Client::setTargetPath() {
+
+  std::string uri = getUri();
+  std::string root = _targetLocation.getRoot();
+  std::string index = _targetLocation.getIndex();
+
+  if (uri == _targetLocation.getPath()) {
+    if (!index.empty()) {
+      if (root[root.size() - 1] != '/')
+          root += '/';
+      _targetLocation.setPath(root + index);
+    } else {
+      _targetLocation.setPath(root);
+    }
   } else {
-    std::cout << "Method " << getMethod() << " is NOT allowed for location "
-              << _targetLocation.getPath() << std::endl;
+    std::string relativePath = uri.substr(_targetLocation.getPath().size());
+    if (!relativePath.empty() && relativePath[0] != '/')
+      relativePath = "/" + relativePath;
+    _targetLocation.setPath(root + relativePath);
   }
-
-  std::string root;
-  if (!_targetLocation.getRoot().empty())
-    root = _targetLocation.getRoot();
-  else
-    root = _config.getRoot();
-  // std::string path;
-  if (_targetLocation.getPath() == "/")
-    _targetLocation.setPath(root + uri);
-
-  else
-    _targetLocation.setPath(root + uri.substr(_targetLocation.getPath().size()));
-  // _targetPath = root + uri.substr(_targetLocation.getPath().size());
 }
 
 std::string readFile(const std::string &filepath) {
@@ -133,68 +283,63 @@ void Client::sendFile(const std::string &filepath) {
 
 void Client::handelGET() {
 
-
+  findTargetLocation();
   setTargetPath();
   const std::string filepath = _targetLocation.getPath();
-  // std::cout << "Target file path: " << filepath << std::endl;
-  // std::string index
-  // match server name
-
-  // std::cout << "Target file path: " << filepath << std::endl;
   struct stat st;
   if (stat(filepath.c_str(), &st) != 0) {
     std::cout << "File not found: " << filepath << std::endl;
-    // sendError(404); return;
   }
 
   if (S_ISREG(st.st_mode)) {
-    std::cout << "File exists and is a regular file: " << filepath <<
-    std::endl;
-  // File exists and is a regular file, check if it's readable
-
+    std::cout << "Path is a regular file: " << filepath << std::endl;
     if (access(filepath.c_str(), R_OK) != 0) {
         std::cout << "File is not readable: " << filepath << std::endl;
-        // sendError(403); return;
     }
-      // std::cout << "File is readable: " << filepath << std::endl;
-      // sendError(403); return;
-
-      sendFile(filepath);
-      // sendError(403); return;
-      //   return;
+    sendFile(filepath);
   }
-
   if (S_ISDIR(st.st_mode)) {
+    if (_targetLocation.getAutoindex()) {
 
-    std::string index = _targetLocation.getIndex();
+        if (_targetLocation.getAutoindex())
+    {
+        // std::string dirPath = filepath;
+        // if (dirPath.back() != '/') dirPath += '/';
+
+        std::string body = buildAutoIndex(_targetLocation.getPath(), getUri());
+
+        // if (body.empty())
+        // {
+        //     sendError(500);   // opendir failed
+        //     return;
+        // }
+
+        std::ostringstream response;
+        response << "HTTP/1.1 200 OK\r\n"
+                 << "Content-Type: text/html\r\n"
+                 << "Content-Length: " << body.size() << "\r\n"
+                 << "Connection: keep-alive\r\n"
+                 << "\r\n"
+                 << body;
+
+        // setResponse(response.str());
+        setResponse(response.str());
+        return;
+    }
+      std::cout << "Autoindex is enabled for directory: " << filepath
+                << std::endl;
+      // Implement autoindex logic here, e.g., generate a directory listing
+      // and send it to the client
+    } else {
+      std::cout << "Autoindex is disabled for directory: " << filepath
+                << std::endl;
+      // Handle the case where autoindex is off, e.g., send a 403 Forbidden
+      // response or redirect to an index file if specified
+    }
+    // std::cout << "Path is a directory: " << filepath << std::endl;
+    // std::string index = _targetLocation.getIndex();
     // std::cout << "Index file specified: " << index << std::endl;
-    // if (!index.empty()) {
-    //     std::string indexPath = filepath + "/" + index;
-    //     if (stat(indexPath.c_str(), &st) == 0 && S_ISREG(st.st_mode)) {
-    //         std::cout << "Index file found: " << indexPath << std::endl;
-    //         sendFile(indexPath);
-    //         return;
-    //     }
-    // }
-
-    std::cout << "Path is a directory: " << filepath << std::endl;
-    sendFile(filepath + index);
-    // Handle directory case, e.g., check for index file or autoindex
-    // if (_targetLocation.getAutoindex()) {
-    //     std::cout << "Autoindex is enabled for directory: " << filepath <<
-    //     std::endl;
-    //     // Generate and send autoindex page
-    // } else {
-    //     // sendfile(filepath);
-    //     std::cout << "Autoindex is disabled for directory: " << filepath
-    // <<
-    //     std::endl;
-    //     // sendError(403); return;
-    // }
   }
-
-  // read file, send 200
-  // sendFile(filepath);
 }
 
 Client::Client(int fd, const Config &config) : _fd(fd), _config(config) {
@@ -214,19 +359,3 @@ size_t getContentLength(const std::string &headers) {
     pos++;
   return std::strtoul(headers.c_str() + pos, NULL, 10);
 }
-
-// bool Client::isRequestComplete() const
-// {
-
-// }
-
-// void Client::displayrequest()
-// {
-//     _request.displayrequest();
-// }
-
-// void Client::parseRequest()
-// {
-//     _request.appendData(_readBuffer);
-//     _request.parse();
-// }

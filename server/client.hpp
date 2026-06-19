@@ -10,27 +10,23 @@ class LocationConfig;
 class Client : public Request, public Response
 {
 private:
-  int _fd;
-  Config _config;
-  Request _request;
-  Response _response;
-  LocationConfig _targetLocation;
+
+  int             _fd;
+  Config          _config;
+  Request         _request;
+  Response        _response;
+  LocationConfig  _targetLocation;
 
 
 public:
+
   Client(int fd, const Config &config);
   int getFd() const;
   const Config &getConfig() const;
-  // void initrespend() {
+  void findTargetLocation();
 
-  // }
   void setTargetPath();
   Request &getrequest() { return _request; }
-  // bool isRequestComplete() const ;
-  // bool isheaderComplete() const ;
-  // void appendToBuffer(const char* data, size_t len) {
-  //     _readBuffer.append(data, len);
-  // }
   void readRequest();
   void setResponse(const std::string &response) {
     _response.setRawResponse(response);
@@ -46,9 +42,5 @@ public:
   }
   std::string getfilepath();
   void sendFile(const std::string &filepath);
-  // void displayrequest();
-  // void parseRequest();
-  // Request& getrequest() {return _request;}
-  // void readytosend(const char* data, size_t len);
-  // bool allowedMethod(const std::string &method) const;
+  std::string buildAutoIndex(const std::string &dirPath, const std::string &uri);
 };

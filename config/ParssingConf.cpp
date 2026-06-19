@@ -3,6 +3,7 @@
 #include <fstream>
 #include <iostream>
 #include <sstream>
+// #include <vector>
 
 std::string intToStr(int n) {
   std::ostringstream ss;
@@ -66,134 +67,85 @@ std::vector<std::string> ParssingConf::tokenize(const std::string &content) {
   return tokens;
 }
 
-Config ParssingConf::parseServerBlock(const std::vector<std::string> &tokens,
-                                      size_t &i) {
-  Config cfg;
+Config ParssingConf::parseServerBlock(const std::vector<std::string> &tokens, size_t &i) 
+{
 
-  while (i < tokens.size() && tokens[i] != "}") {
-    std::string directive = tokens[i++];
-    if (directive == "listen") {
-      if (i >= tokens.size())
-        error("'listen' missing value");
-      cfg.setPort(tokens[i++]);
-    } else if (directive == "server_name") {
-      if (i >= tokens.size())
-        error("'server_name' missing value");
-      cfg.setServerName(tokens[i++]);
-    } else if (directive == "autoindex") {
-      if (i >= tokens.size())
-        error("'autoindex' missing value");
-      cfg.setAutoindex(tokens[i++]);
-    } else if (directive == "root") {
-      if (i >= tokens.size())
-        error("'root' missing value");
-      cfg.setRoot(tokens[i++]);
-    } else if (directive == "index") {
-      if (i >= tokens.size())
-        error("'index' missing value");
-      cfg.setIndex(tokens[i++]);
-    } else if (directive == "client_max_body_size") {
-      if (i >= tokens.size())
-        error("'client_max_body_size' missing value");
-      cfg.setClientMaxBodySize(tokens[i++]);
-    } else if (directive == "error_page") {
-      if (i + 1 >= tokens.size())
-        error("'error_page' requires code and path");
-      std::string code = tokens[i++];
-      std::string path = tokens[i++];
-      cfg.addErrorPage(code, path);
-    } else if (directive == "location") {
-      if (i >= tokens.size())
-        error("'location' missing path");
-      std::string path = tokens[i++];
-      if (!path.empty() && path[path.size() - 1] == ';')
-        path = path.substr(0, path.size() - 1);
+	Config cfg;
 
-      if (i >= tokens.size() || tokens[i] != "{")
-        error("Expected '{' after location path '" + path + "'");
-      ++i;
-      LocationConfig loc = parseLocationBlock(tokens, i, path);
+	while (i < tokens.size() && tokens[i] != "}") 
+	{
+		std::string directive = tokens[i++];
+		if (directive == "listen") {
+			if (i >= tokens.size())
+				error("'listen' missing value");
+			cfg.setPort(tokens[i++]);
+		} else if (directive == "server_name") {
+			if (i >= tokens.size())
+				error("'server_name' missing value");
+			cfg.setServerName(tokens[i++]);
+		} else if (directive == "autoindex") {
+			if (i >= tokens.size())
+				error("'autoindex' missing value");
+			cfg.setAutoindex(tokens[i++]);
+		} else if (directive == "root") {
+			if (i >= tokens.size())
+				error("'root' missing value");
+			cfg.setRoot(tokens[i++]);
+		} else if (directive == "index") {
+			if (i >= tokens.size())
+				error("'index' missing value");
+			cfg.setIndex(tokens[i++]);
+		} else if (directive == "client_max_body_size") {
+			if (i >= tokens.size())
+				error("'client_max_body_size' missing value");
+			cfg.setClientMaxBodySize(tokens[i++]);
+		} else if (directive == "error_page") {
+			if (i + 1 >= tokens.size())
+				error("'error_page' requires code and path");
+			std::string code = tokens[i++];
+			std::string path = tokens[i++];
+			cfg.addErrorPage(code, path);
+		} else if (directive == "location") {
 
-      if (i >= tokens.size() || tokens[i] != "}")
-        error("Expected '}' to close location block '" + path + "'");
-      ++i;
-      cfg.addLocation(loc);
-    } else if (directive == "methods") {
-      if (i >= tokens.size())
-        error("'methods' missing values");
-      std::vector<std::string> methods;
-      while (i < tokens.size() && tokens[i] != "}") {
-        std::string m = tokens[i++];
-        methods.push_back(m);
-        if (!m.empty() && m[m.size() - 1] == ';')
-          break;
-      }
-      cfg.setMethods(methods);
-    } else {
-      error("Unknown directive in server block: '" + directive + "'");
-    }
-  }
-  if (cfg.getPort() == 0)
-    error("Server block is missing 'listen' directive");
-  if (cfg.getRoot().empty())
-    error("Server block (port " + intToStr(cfg.getPort()) +
-          ") is missing 'root'");
+			if (i >= tokens.size())
+				error("'location' missing path");
+			std::string path = tokens[i++];
+			if (!path.empty() && path[path.size() - 1] == ';')
+				path = path.substr(0, path.size() - 1);
+			if (i >= tokens.size() || tokens[i] != "{")
+				error("Expected '{' after location path '" + path + "'");
+			++i;
+			LocationConfig loc(cfg);
+			loc.override(tokens, i, path);
+			// loc = parseLocationBlock(tokens, i, path);
 
-  return cfg;
+			if (i >= tokens.size() || tokens[i] != "}")
+				error("Expected '}' to close location block '" + path + "'");
+			++i;
+			cfg.addLocation(loc);
+		} else if (directive == "methods") {
+			if (i >= tokens.size())
+				error("'methods' missing values");
+			std::vector<std::string> methods;
+			while (i < tokens.size() && tokens[i] != "}") {
+				std::string m = tokens[i++];
+				methods.push_back(m);
+				if (!m.empty() && m[m.size() - 1] == ';')
+					break;
+			}
+			cfg.setMethods(methods);
+		} else {
+			error("Unknown directive in server block: '" + directive + "'");
+		}
+	}
+	if (cfg.getPort() == 0)
+		error("Server block is missing 'listen' directive");
+	if (cfg.getRoot().empty())
+		error("Server block (port " + intToStr(cfg.getPort()) + ") is missing 'root'");
+
+	return cfg;
 }
 
-LocationConfig
-ParssingConf::parseLocationBlock(const std::vector<std::string> &tokens,
-                                 size_t &i, const std::string &path) {
-  LocationConfig loc;
-  loc.setPath(path);
-
-  while (i < tokens.size() && tokens[i] != "}") {
-    std::string directive = tokens[i++];
-    if (directive == "root") {
-      if (i >= tokens.size())
-        error("location '" + path + "': 'root' missing value");
-      loc.setRoot(tokens[i++]);
-    } else if (directive == "index") {
-      if (i >= tokens.size())
-        error("location '" + path + "': 'index' missing value");
-      loc.setIndex(tokens[i++]);
-    } else if (directive == "autoindex") {
-      if (i >= tokens.size())
-        error("location '" + path + "': 'autoindex' missing value");
-      loc.setAutoindex(tokens[i++]);
-    } else if (directive == "methods") {
-      if (i >= tokens.size())
-        error("location '" + path + "': 'methods' missing values");
-      std::vector<std::string> methods;
-      while (i < tokens.size() && tokens[i] != "}") {
-        // loc.addMethod(tokens[i]);
-        std::string m = tokens[i++];
-        methods.push_back(m);
-        if (!m.empty() && m[m.size() - 1] == ';')
-          break;
-      }
-
-      loc.setMethods(methods);
-    } else if (directive == "cgi_extension") {
-      if (i >= tokens.size())
-        error("location '" + path + "': 'cgi_extension' missing value");
-      loc.setCgiExtension(tokens[i++]);
-    } else if (directive == "cgi_path") {
-      if (i >= tokens.size())
-        error("location '" + path + "': 'cgi_path' missing value");
-      loc.setCgiPath(tokens[i++]);
-    } else if (directive == "return") {
-      if (i >= tokens.size())
-        error("location '" + path + "': 'return' missing value");
-      loc.setReturn(tokens[i++]);
-    } else {
-      error("Unknown directive in location '" + path + "': '" + directive +
-            "'");
-    }
-  }
-  return loc;
-}
 
 void ParssingConf::validate() {
   for (size_t i = 0; i < _configs.size(); ++i) {
@@ -244,4 +196,57 @@ void ParssingConf::parseConfig(const std::string &filename) {
   if (_configs.empty())
     error("No server blocks found in config file");
   validate();
+}
+
+
+void LocationConfig::override(const std::vector<std::string> &tokens, size_t &i, const std::string path) {
+
+  setPath(path);
+
+  while (i < tokens.size() && tokens[i] != "}") {
+    std::string directive = tokens[i++];
+    if (directive == "root") {
+      if (i >= tokens.size())
+
+        error("location '" + path + "': 'root' missing value");
+      setRoot(tokens[i++]);
+    } else if (directive == "index") {
+      if (i >= tokens.size())
+        error("location '" + path + "': 'index' missing value");
+      setIndex(tokens[i++]);
+    } else if (directive == "autoindex") {
+      if (i >= tokens.size())
+        error("location '" + path + "': 'autoindex' missing value");
+     setAutoindex(tokens[i++]);
+    } else if (directive == "methods") {
+      if (i >= tokens.size())
+        error("location '" + path + "': 'methods' missing values");
+      std::vector<std::string> listmethods;
+      while (i < tokens.size() && tokens[i] != "}") 
+	  {
+		std::string m = tokens[i++];
+		listmethods.push_back(m);
+		if (!m.empty() && m[m.size() - 1] == ';')
+		  break;
+      }
+      setMethods(listmethods);
+
+    } else if (directive == "cgi_extension") {
+      if (i >= tokens.size())
+        error("location '" + path + "': 'cgi_extension' missing value");
+      setCgiExtension(tokens[i++]);
+    } else if (directive == "cgi_path") {
+      if (i >= tokens.size())
+        error("location '" + path + "': 'cgi_path' missing value");
+      setCgiPath(tokens[i++]);
+    } else if (directive == "return") {
+      if (i >= tokens.size())
+        error("location '" + path + "': 'return' missing value");
+      setReturn(tokens, &i);
+      // i++;
+    } else {
+      error("Unknown directive in location '" + path + "': '" + directive + "'");
+    }
+  }
+//   return loc;
 }

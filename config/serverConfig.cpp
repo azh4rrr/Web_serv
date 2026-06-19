@@ -22,21 +22,22 @@ const std::map<int, std::string> &serverConfig::getErrorPages() const {
 const std::vector<std::string> &serverConfig::getMethods() const { return _methods; }
 const std::string &serverConfig::getCgiExtension() const { return _cgiExtension; }
 const std::string &serverConfig::getCgiPath() const { return _cgiPath; }
-const std::string &serverConfig::getReturn() const { return _return; }
+// const std::string &serverConfig::getReturn() const { return _return; }
+
 
 serverConfig::serverConfig() {
 //   _port = 0;
 //   _serverName = "";
-  _root = "";
-  _index = "";
-  _autoindex = false;
-  _clientMaxBodySize = "0";
-  _errorPages.clear();
-//   _locations.clear();
-  _methods.clear();
-  _cgiExtension = "";
-  _cgiPath = "";
-  _return = "";
+//   _root = "";
+//   _index = "";
+//   _autoindex = false;
+//   _clientMaxBodySize = "0";
+//   _errorPages.clear();
+// //   _locations.clear();
+//   _methods.clear();
+//   _cgiExtension = "";
+//   _cgiPath = "";
+//   _return = "";
 }
 serverConfig::~serverConfig() {
   _errorPages.clear();
@@ -47,7 +48,7 @@ serverConfig::~serverConfig() {
   _methods.clear();
   _cgiExtension.clear();
   _cgiPath.clear();
-  _return.clear();
+  // _return.second.clear();
 }
 
 // void serverConfig::setPort(const std::string &port) {
@@ -129,8 +130,8 @@ void serverConfig::addErrorPage(const std::string &code, const std::string &path
 // }
 
 void serverConfig::setMethods(const std::vector<std::string> &methods) {
-  _methods.clear();
-  std::cout << "methods test \n";
+  // _methods.clear();
+  // std::cout << "methods test \n";
   for (size_t i = 0; i < methods.size(); ++i) {
     std::string m = methods[i];
     if (i == methods.size() - 1 && !m.empty()) {
@@ -139,7 +140,7 @@ void serverConfig::setMethods(const std::vector<std::string> &methods) {
     if (m != "GET" && m != "POST" && m != "DELETE") {
       throw std::runtime_error("Server: invalid method '" + m + "'");
     }
-    std::cout << "Adding method: " << m << std::endl;
+    // std::cout << "Adding method: " << m << std::endl;
     _methods.push_back(m);
   }
 }
@@ -152,9 +153,7 @@ void serverConfig::setCgiPath(const std::string &cgiPath) {
   _cgiPath = stripSemicolon(cgiPath);
 }
 
-void serverConfig::setReturn(const std::string &returnValue) {
-  _return = stripSemicolon(returnValue);
-}
+
 
 std::string serverConfig::stripSemicolon(const std::string &s) {
   if (!s.empty() && s[s.size() - 1] == ';')
